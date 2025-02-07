@@ -118,10 +118,20 @@ calc_scores <- function(norm_log, all_peptide_fcs, positives, exclusion_method =
     
     dist_info[i, 1] <- row.names(dist_info)[i] %>% as.numeric()
     
-    gammafit  <-  fitdist(distributions[i,] %>% t() %>% as.numeric(), "gamma")
+    valid_data <- distributions[i,] %>% t() %>% as.numeric()
+    valid_data <- valid_data[valid_data > 0 & !is.na(valid_data)]  # Remove zeros & NA
     
-    dist_info[i, 2] <- gammafit[["estimate"]][["shape"]]
-    dist_info[i, 3] <- gammafit[["estimate"]][["rate"]]
+    if(length(valid_data) > 1 && var(valid_data) > 0) {  
+      # Fit gamma distribution only if variance exists
+      gammafit  <- fitdist(valid_data, "gamma")
+      dist_info[i, 2] <- gammafit[["estimate"]][["shape"]]
+      dist_info[i, 3] <- gammafit[["estimate"]][["rate"]]
+      } else {
+        warning("Skipping Gamma fitting for i =", i, "- No variance in data.")
+        # Assign small non-zero values as fallback
+        dist_info[i, 2] <- 1  # Default shape parameter
+        dist_info[i, 3] <- 1  # Default rate parameter
+        }
   }
   
   dist_info <- dist_info %>% mutate(mean = shape / rate) %>%
@@ -321,4 +331,3 @@ ARscore_algorithm <- function(hfc = NULL, fc, set_max_iterations = 10,
   
   return(scores)
 }
-
